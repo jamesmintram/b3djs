@@ -54,9 +54,22 @@
 
 (defn- eof? [state] (empty? (:source-lines state)))
 
+(defn- rest-if [sequence pred]
+  (if (pred (first sequence)) (rest sequence) sequence))
+
 (defn read-ident [line] 
-  (let [[ident remain] (split-with valid-ident-char? line)]
-    [{:type :ident :value (apply str ident)} remain]))
+  (let [[ident remain] (split-with valid-ident-char? line)
+        ;; stringify and normalize identifer
+        ident (->> ident 
+                   (apply str) 
+                   (s/lower-case))
+        
+        ;; Remove postfix "type hints" from the end of identifiers if present
+        remain (-> remain
+                   (rest-if #(= % "#"))
+                   (rest-if #(= % "$")))]
+    
+    [{:type :ident :value ident} remain]))
 
 (defn read-string [line] 
   (loop [remain (rest line) ;;Drop the first "
@@ -76,36 +89,69 @@
 
 (defn read-binary [str] [{:type :binary} (drop 1 str)])
 (defn read-hex [str] [{:type :hex} (drop 1 str)])
-(defn read-number [str] 
-  [{:type :number} (drop-while numeric? str)])
 
-(defn parse-token [str]
-  (let [[c n1 n2] (take 3 str)]
+(defn read-number 
+  ;;TODO: Improve this, regex? take enough + then parse?
+  "The worlds worst number parser"
+  [line]
+  (let [read-neg (fn [[n line]]
+                   (if (= "-" (first line))
+                     [(assoc n :neg true) (rest line)]
+                     [(assoc n :neg false) line]))
+        read-digits (fn [key]
+                      (fn [[n line]]
+                        (let [[num line] (split-with numeric? line)
+                              num (apply str num)]
+                          [(assoc n key num) line])))
+        read-f (read-digits :f)
+        read-s (read-digits :s)
+        read-point (fn [[n line]]
+                     (if (= "." (first line))
+                       [(assoc n :type :float) (rest line)]
+                       [(assoc n :type :int) line]))
+        to-number (fn [[n line]]
+                    (let [neg-prefix (if (:neg n) "-" "")
+                          value (if (= (:type n) :int)
+                                  (js/parseInt (str neg-prefix (:f n)))
+                                  (js/parseFloat (str neg-prefix (:f n) "." (:s n))))]
+                      [(assoc n :value value) line]))]
+    (-> [{} line]
+        (read-neg)
+        (read-f)
+        (read-point)
+        (read-s)
+        (to-number))))
+
+(defn parse-token 
+  "Returns a map containing information about the token
+   and the remainder of the line"
+  [line]
+  (let [[c n1 n2] (take 3 line)]
     (cond
       (nil? c) nil
       
-      (s/blank? c) [nil (drop 1 str)]
+      (s/blank? c) [nil (drop 1 line)]
       (= c ";") [nil ""]
 
-      (and (= c ".") (numeric? n1)) [{:type :num} (rest str)];;(read-number str)
-      (and (= c "-") (= n1 ".") (numeric? n2)) [{:type :num} (rest str)];;(read-number str)
+      (and (= c ".") (numeric? n1)) (read-number line)
+      (and (= c "-") (= n1 ".") (numeric? n2)) (read-number line)
       (or (numeric? c)
-          (and (= c '-') (numeric? n1))) [{:type :num} (rest str)];;(read-number str)
+          (and (= c '-') (numeric? n1))) (read-number line)
       
-      (= c "$") (read-hex str)
-      (= c "%") (read-binary str)
-      (= c "\"") (read-string str)
-      (alpha? c) (read-ident str)
+      (= c "$") (read-hex line)
+      (= c "%") (read-binary line)
+      (= c "\"") (read-string line)
+      (alpha? c) (read-ident line)
 
-      (and (= c "<") (= n1 "=")) [{:type :lte} (drop 2 str)]
-      (and (= c ">") (= n1 "=")) [{:type :gte} (drop 2 str)]
-      (and (= c "<") (= n1 ">")) [{:type :ne} (drop 2 str)]
+      (and (= c "<") (= n1 "=")) [{:type :lte} (drop 2 line)]
+      (and (= c ">") (= n1 "=")) [{:type :gte} (drop 2 line)]
+      (and (= c "<") (= n1 ">")) [{:type :ne} (drop 2 line)]
 
-      (simple-tokens c) [{:type (simple-tokens c)} (drop 1 str)]
-      :else [{:type :unknown} (drop 1 str)])))
+      (simple-tokens c) [{:type (simple-tokens c)} (drop 1 line)]
+      :else [{:type :unknown} (drop 1 line)])))
 
-(defn line->tokens [str]
-  (loop [remain str
+(defn line->tokens [line]
+  (loop [remain line
          tokens []]
     
     (if-let [[token res] (parse-token remain)]

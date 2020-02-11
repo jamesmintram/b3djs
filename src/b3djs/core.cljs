@@ -1,7 +1,8 @@
 (ns b3djs.core
   (:require [reagent.core :as reagent :refer [atom]]
             [b3djs.toker :as toker]
-            [b3djs.test1 :as test]))
+            [b3djs.test1 :as test]
+            [cljs.pprint :as pprint]))
 
 ;; define your app data so that it doesn't get over-written on reload
 
@@ -17,8 +18,10 @@
         (recur new-state (conj tokens (:current new-state)))))))
 
 (comment 
-  (print (recompile)))
+  (pprint/pprint (recompile)))
  
+
+(pprint/pprint (recompile))
 
 (defn hello-world []
   [:div
