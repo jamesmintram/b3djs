@@ -1,32 +1,35 @@
 (ns b3djs.core
   (:require [reagent.core :as reagent :refer [atom]]
             [b3djs.toker :as toker]
-            [b3djs.test1 :as test]
+            [b3djs.parser :as parser]
+            [tests.print :as test]
             [cljs.pprint :as pprint]))
-
+ 
 ;; define your app data so that it doesn't get over-written on reload
 
 (defonce app-state (atom {:text "Hello world!"}))
 
+(defn print-tokens [lexer]
+  (cljs.pprint/pprint 
+   (loop [state lexer
+          tokens []]
+     (let [[_token new-state] (toker/consume state)]
+       (if (= :eof (-> state :current :type))
+         tokens
+         (recur new-state (conj tokens (:current new-state))))))))
+
 (defn recompile []
-  (loop [state (toker/create test/code)
-         tokens []] 
-    
-    (let [new-state (toker/consume state)]
-      (if (= :eof (-> state :current :type))
-        tokens
-        (recur new-state (conj tokens (:current new-state)))))))
-
-(comment 
-  (pprint/pprint (recompile)))
- 
-
-(pprint/pprint (recompile))
+    (-> test/code
+        (toker/create)
+        (parser/build-ast)))
 
 (defn hello-world []
+  (print-tokens (toker/create test/code))
   [:div
    [:h1 (:text @app-state)]
-   [:h3 "Edit this and watch it change!"]])
+   [:pre
+    (let [ast (recompile)]
+      (with-out-str (cljs.pprint/pprint ast)))]])
 
 (defn start []
   (reagent/render-component [hello-world]

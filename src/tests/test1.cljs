@@ -1,4 +1,4 @@
-(ns b3djs.test1)
+(ns tests.test1)
 
 (def code "
 
@@ -9,7 +9,6 @@
 
 ;Wood texture used courtesy of Noctua Graphics
 ;www.noctua-graphics.de or www.hisoft.co.uk
-
 
 Graphics3D \"something\" 640 , 480 , 32
 

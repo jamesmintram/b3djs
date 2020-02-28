@@ -46,6 +46,15 @@
    "\"" "\""
    "t" "\t"})
 
+(def keywords 
+  {"function" :function
+   "endfunction" :function-end
+   "type" :type
+   "endtype" :type-end
+   "for" :for
+   "to" :to
+   })
+
 (defn- next-line [state]
   ;;Inc row
   (-> state
@@ -68,8 +77,9 @@
         remain (-> remain
                    (rest-if #(= % "#"))
                    (rest-if #(= % "$")))]
-    
-    [{:type :ident :value ident} remain]))
+    (if-let [keyword (get keywords ident)]
+      [{:type keyword} remain]
+      [{:type :ident :value ident} remain])))
 
 (defn read-string [line] 
   (loop [remain (rest line) ;;Drop the first "
@@ -129,7 +139,7 @@
   (let [[c n1 n2] (take 3 line)]
     (cond
       (nil? c) nil
-      
+
       (s/blank? c) [nil (drop 1 line)]
       (= c ";") [nil ""]
 
@@ -156,7 +166,7 @@
     
     (if-let [[token res] (parse-token remain)]
       (recur res (if token (conj tokens token) tokens))
-      tokens)))
+      (conj tokens {:type :newline}))))
 
 
 (defn- next-real-line [state]
@@ -176,11 +186,18 @@
     ;; Still tokens to process for the current line
     state))
 
+(defn current-token [state]
+  (-> state :current))
+
+(defn next-token [state]
+  (-> state :next))
+
 (defn consume 
   ([state] (consume state nil))
   ([state _expected]
    
-   (let [state (next-real-line state)
+   (let [current (current-token state)
+         state (next-real-line state)
          state (assoc state :current (:next state))
          state (assoc state :next (if (eof? state) 
                                     {:type :eof}
@@ -190,7 +207,25 @@
      ; Happens during first call to `consume`
      (if (nil? (:current state))
          (consume state)
-         state))))
+         [current state]))))
+
+(defn drop-token [lexer] 
+  (let [[_ lexer] (consume lexer)] lexer))
+
+(defn drop-if [lexer required-token]
+  (if (= required-token (-> lexer current-token :type))
+    (drop-token lexer)
+    lexer))
+
+(defn drop-required [lexer required-token]
+  (if (= required-token (-> lexer current-token :type))
+    (drop-token lexer)
+    (assert false))) ;;Required token not found
+
+(defn consume-if [lexer required-token]
+  (if (= required-token (current-token lexer))
+    (-> lexer drop-token consume)
+    [nil lexer]))
 
 (defn create [stream]
   (merge
