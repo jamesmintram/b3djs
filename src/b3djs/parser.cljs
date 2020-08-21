@@ -38,8 +38,13 @@
   )
 
 (defn param-list-items [lexer]
-  ;;Repeat while :comma after param
-  [[{} {}] lexer])
+  (loop [lex lexer
+         params []]
+    (let [[current lex] (toker/consume lex) ;;TODO: Make this reference an expression node
+          params (conj params current)]
+      (case (-> lex toker/current-token :type)
+        :comma (recur (toker/drop-token lex) params)
+        [params lex])))) 
 
 (defn param-list [lexer]
   (let [lexer (toker/drop-if lexer :oparen)
@@ -77,8 +82,22 @@
 (defn program-statement [lexer]
   (case (-> lexer toker/current-token :type)
     :function (function-def lexer)
+    :newline (program-statement (toker/drop-token lexer))
     :type (type-def lexer)
+    :eof [{:type :eof} lexer]
     (statement lexer)))
+
+
+(defn program-statements [lexer]
+  (loop [statements []
+         lex lexer
+         ctr 0]
+    (assert (< ctr 100))
+    (case (-> lex toker/current-token :type)
+      :eof [statements lex]
+      (let [[statement lex] (program-statement lex)]
+        (recur (conj statements statement) lex (inc ctr))))))
+
 
 (defn program [lexer]
   ;;loop while not EOF
@@ -87,11 +106,12 @@
 
   ;; Repeat until EOF
 
-  (let [[statements lexer] (program-statement lexer)]
+  (let [[statements lexer] (program-statements lexer)]
     [{:type :program
       :statements statements} lexer]))
 
 (defn build-ast [lexer]
+  (print "Building AST")
   (binding [*env* (push-scope)]
     ;;HACK: To prime the lexer
     (let [[_ lexer] (toker/consume lexer)

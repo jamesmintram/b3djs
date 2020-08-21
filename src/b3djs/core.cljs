@@ -1,5 +1,6 @@
 (ns b3djs.core
   (:require [reagent.core :as reagent :refer [atom]]
+            [reagent.dom :as rdom]
             [b3djs.toker :as toker]
             [b3djs.parser :as parser]
             [tests.print :as test]
@@ -32,7 +33,7 @@
       (with-out-str (cljs.pprint/pprint ast)))]])
 
 (defn start []
-  (reagent/render-component [hello-world]
+  (rdom/render [hello-world]
                             (. js/document (getElementById "app"))))
 
 (defn ^:export init []

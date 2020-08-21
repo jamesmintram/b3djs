@@ -218,6 +218,7 @@
     lexer))
 
 (defn drop-required [lexer required-token]
+  (print  required-token " " (-> lexer current-token :type))
   (if (= required-token (-> lexer current-token :type))
     (drop-token lexer)
     (assert false))) ;;Required token not found

@@ -1,0 +1,24 @@
+; This is the Calva evaluation results output window.
+; Leave it open, please. Because quirks.
+; TIPS: The keyboard shortcut `ctrl+alt+c o` shows and focuses this window.
+; Please see https://calva.io/output/ for more info.
+; Happy coding! ♥️
+
+; Connecting ...
+; Hooking up nREPL sessions...
+; Connected session: clj
+; TIPS: You can edit the contents here. Use it as a REPL if you like.
+;   Use `alt+enter` to evaluate the current top level form.
+;   (`ctrl+enter` evaluates the current form.)
+;   File URLs in stacktrace frames are peekable and clickable.
+; Debugger initialized
+clj::shadow.user=> 
+; Creating cljs repl session...
+; Connecting cljs repl: shadow-cljs...
+;   The Calva Connection Log might have more connection progress information.
+; Connected session: cljs, repl: :app
+; TIPS: You can choose which REPL to use (clj or cljs):
+;    *Calva: Toggle REPL connection*
+;    (There is a button in the status bar for this)
+cljs::cljs.user=> 
+; nREPL Connection was closed
